@@ -16,7 +16,7 @@ def chat(message: str, history: list[list[str]]) -> str:
         answer += f"   *\"{h['text'][:100]}...\"*\n"
     return answer
 
-demo = gr.ChatInterface(fn=chat,
+demo: gr.ChatInterface = gr.ChatInterface(fn=chat,
                         title="Network Science Tutor",
                         description="Ask questions about CS 7280: Network Science grounded in Barabási's textbook.",
                          examples=[

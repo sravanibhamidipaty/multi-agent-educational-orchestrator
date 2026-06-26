@@ -4,8 +4,8 @@ from config import CHROMA_PATH
 
 chroma_path: str | None = CHROMA_PATH
 
-client = chromadb.PersistentClient(path=chroma_path)
-collection = client.get_collection("network_science")
+client: chromadb.ClientAPI = chromadb.PersistentClient(path=chroma_path)
+collection: chromadb.Collection = client.get_collection("network_science")
 
 print(f"Total chunks: {collection.count()}")
 

@@ -4,7 +4,7 @@ import pytest
 import chromadb
 from typing import Any
 
-ACCURATE_DATA = [
+ACCURATE_DATA: list[Any] = [
     {"query": "What is a node in a network?", "relevant_chapter": 2},
     # xfail for basic RAG: vocabulary mismatch — raw query lacks textbook terms
     # ("preferential attachment", "Barabási-Albert") that chapter 5 uses.

@@ -5,10 +5,10 @@ from config import GROQ_API_KEY, CHROMA_PATH
 
 chroma_path: str | None = CHROMA_PATH
 
-groq_client = Groq(api_key=GROQ_API_KEY)
-model = SentenceTransformer("BAAI/bge-small-en-v1.5")
-chroma_client = chromadb.PersistentClient(path=chroma_path)
-collection = chroma_client.get_collection("network_science")
+groq_client: Groq = Groq(api_key=GROQ_API_KEY)
+model: SentenceTransformer = SentenceTransformer("BAAI/bge-small-en-v1.5")
+chroma_client: chromadb.ClientAPI = chromadb.PersistentClient(path=chroma_path)
+collection: chromadb.Collection = chroma_client.get_collection("network_science")
 
 # Mollick, Ethan and Mollick, Lilach (2023). “Assigning AI: Seven Approaches
 # for Students, with Prompts”. In: arXiv. doi: 10.48550/arXiv.2306.10052. url:

@@ -19,9 +19,9 @@ def clean_text(text: str) -> str:
 
     return text.strip()
 
-model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+model: SentenceTransformer = SentenceTransformer("BAAI/bge-small-en-v1.5")
 
-client = chromadb.PersistentClient(path=chromadb_path)
+client: chromadb.ClientAPI = chromadb.PersistentClient(path=chromadb_path)
 
 try:
       client.delete_collection("network_science")
@@ -29,9 +29,9 @@ try:
 except:
   pass
 
-collection = client.get_or_create_collection(name="network_science")
+collection: chromadb.Collection = client.get_or_create_collection(name="network_science")
 
-splitter = RecursiveCharacterTextSplitter(chunk_size=500 * 4, chunk_overlap=100 * 4, length_function=len)
+splitter: RecursiveCharacterTextSplitter = RecursiveCharacterTextSplitter(chunk_size=500 * 4, chunk_overlap=100 * 4, length_function=len)
 
 for filename in sorted(os.listdir(text_directory)):
     chapter_number = filename.replace("chapter_", "").replace(".txt", "")
