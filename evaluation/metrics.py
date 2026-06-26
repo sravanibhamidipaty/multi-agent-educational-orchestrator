@@ -1,7 +1,8 @@
+from collections.abc import Callable
 from retrieval.basic_rag import basic_rag
 from retrieval.hyde_rag import hyde
 
-ACCURATE_DATA = [
+ACCURATE_DATA: list[dict[str, str | int]] = [
     {"query": "What is a node in a network?", "relevant_chapter": 2},
     {"query": "How does the scale-free network form?", "relevant_chapter": 5},
     {"query": "What is the clustering coefficient?", "relevant_chapter": 2},
@@ -13,20 +14,20 @@ ACCURATE_DATA = [
 ]
 
 
-def top_k(hits, relevant_chapter, k):
-    def top_k_accuracy(hits, relevant_chapter, k):
+def top_k(hits: list[dict[str, object]], relevant_chapter: int, k: int) -> None:
+    def top_k_accuracy(hits: list[dict[str, object]], relevant_chapter: int, k: int) -> int:
         return int(any(h["chapter"] == relevant_chapter for h in hits[:k]))
 
-    def recall_at_k(hits, relevant_chapter, k):
+    def recall_at_k(hits: list[dict[str, object]], relevant_chapter: int, k: int) -> float:
         retrieved = sum(1 for h in hits[:k] if h["chapter"] == relevant_chapter)
         return retrieved / k
 
-    def ndcg_at_1(hits, relevant_chapter):
+    def ndcg_at_1(hits: list[dict[str, object]], relevant_chapter: int) -> float:
         if hits and hits[0]["chapter"] == relevant_chapter:
             return 1.0
         return 0.0
 
-    def evaluate(retriever_fn, label):
+    def evaluate(retriever_fn: Callable[[str], object], label: str) -> None:
         top1, top3, top5, recalls, ndcgs = [], [], [], [], []
 
         for item in ACCURATE_DATA:

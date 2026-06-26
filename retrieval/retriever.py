@@ -1,7 +1,7 @@
 from retrieval.hyde_rag import hyde
 
 
-def retrieve(query, k=5):
+def retrieve(query: str, k: int = 5) -> list[dict[str, object]]:
     result = hyde(query)
 
     return [

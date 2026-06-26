@@ -9,7 +9,7 @@ client = chromadb.PersistentClient(path=chroma_path)
 collection = client.get_collection("network_science")
 
 
-def basic_rag(query, k=5):
+def basic_rag(query: str, k: int = 5) -> list[dict[str, object]]:
     embedding = model.encode(query).tolist()
 
     results = collection.query(

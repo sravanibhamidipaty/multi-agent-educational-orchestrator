@@ -1,7 +1,7 @@
 from retrieval.retriever import retrieve
 import gradio as gr
 
-def chat(message, history):
+def chat(message: str, history: list[list[str]]) -> str:
     hits = retrieve(message, k=3)
     summary_context = "\n\n".join(f"[Chapter {h['chapter']}]: {h['text'][:300]}" for h in hits)
     answer = "Based on the Network Science textbook, here is what is relevant to your question:\n\n"

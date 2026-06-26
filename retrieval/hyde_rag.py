@@ -14,7 +14,7 @@ collection = chroma_client.get_collection("network_science")
 # for Students, with Prompts”. In: arXiv. doi: 10.48550/arXiv.2306.10052. url:
 # https://arxiv.org/abs/2306.10052.
 
-TUTOR_SYSTEM_PROMPT = """You are an upbeat, encouraging tutor for CS 7280: Network Science, grounded
+TUTOR_SYSTEM_PROMPT: str = """You are an upbeat, encouraging tutor for CS 7280: Network Science, grounded
 strictly in Barabási's Network Science textbook. Your role is to help students understand concepts
 through explanation, examples, and analogies - not by giving away answers directly.
 
@@ -40,7 +40,7 @@ Do not ask questions or give tutoring dialogue. Produce only the textbook-style 
 """
 
 
-def generate_hypothetical_answer(query):
+def generate_hypothetical_answer(query: str) -> str:
     response = groq_client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
@@ -53,7 +53,7 @@ def generate_hypothetical_answer(query):
     return response.choices[0].message.content
 
 
-def hyde(query, k=5):
+def hyde(query: str, k: int = 5) -> dict[str, object]:
     hypothetical_answer = generate_hypothetical_answer(query)
     embedding = model.encode(hypothetical_answer).tolist()
 

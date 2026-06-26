@@ -8,7 +8,7 @@ from config import TEXT_DIR, CHROMA_PATH
 text_directory = TEXT_DIR
 chromadb_path = CHROMA_PATH
 
-def clean_text(text):
+def clean_text(text: str) -> str:
     text = re.sub(r"\d+/\d+/\d+,\s+\d+:\d+\s+[AP]M\s+Chapter.+\n", "", text)
     text = re.sub(r"https?://\S+\s+\d+/\d+\n", "", text)
     text = re.sub(r"Image \d+\.\d+\n.*?\n", "", text, flags=re.DOTALL)

@@ -2,6 +2,7 @@ from retrieval.basic_rag import basic_rag
 from retrieval.hyde_rag import hyde
 import pytest
 import chromadb
+from typing import Any
 
 ACCURATE_DATA = [
     {"query": "What is a node in a network?", "relevant_chapter": 2},
@@ -25,33 +26,33 @@ ACCURATE_DATA = [
 ]
 
 
-def test_basic_rag_returns_k_results():
+def test_basic_rag_returns_k_results() -> None:
     assert len(basic_rag("What is a node?", k=5)) == 5
 
 
-def test_basic_rag_result_has_required_keys():
+def test_basic_rag_result_has_required_keys() -> None:
     hits = basic_rag("What is a node?", k=5)
     assert {"text", "chapter", "chunk_index", "distance"} == hits[0].keys()
 
 
-def test_basic_rag_distance_is_positive():
+def test_basic_rag_distance_is_positive() -> None:
     hits = basic_rag("What is a node?", k=3)
     assert all(h["distance"] > 0 for h in hits)
 
 
-def test_basic_rag_results_sorted_by_distance():
+def test_basic_rag_results_sorted_by_distance() -> None:
     hits = basic_rag("What is a node?", k=5)
     distances = [h["distance"] for h in hits]
     assert distances == sorted(distances)
 
 
-def test_hyde_returns_hypothetical_answer():
+def test_hyde_returns_hypothetical_answer() -> None:
     result = hyde("What is a node?", k=3)
     assert "hypothetical_answer" in result
     assert len(result["hypothetical_answer"]) > 20
 
 
-def test_hyde_guardrail_no_direct_answer():
+def test_hyde_guardrail_no_direct_answer() -> None:
     banned = ["the answer is", "the result is", "therefore x equals", "the solution is"]
     result = hyde("What is the clustering coefficient?", k=3)
     answer = result["hypothetical_answer"].lower()
@@ -59,19 +60,19 @@ def test_hyde_guardrail_no_direct_answer():
     for phrase in banned:
         assert phrase not in answer, (f"Guardrail failed — found banned phrase: '{phrase}'")
 
-def test_hyde_returns_k_results():
+def test_hyde_returns_k_results() -> None:
   result = hyde("What is a node?", k=5)
   assert len(result["hits"]) == 5
 
-def test_hyde_result_has_required_keys():
+def test_hyde_result_has_required_keys() -> None:
     result = hyde("What is a node?", k=1)
     assert {"text", "chapter", "chunk_index", "distance"} == result["hits"][0].keys()
 
-def _id(g):
+def _id(g: Any) -> str:
     return (g["query"] if isinstance(g, dict) else g.values[0]["query"])[:40]
 
 @pytest.mark.parametrize("item", ACCURATE_DATA, ids=[_id(g) for g in ACCURATE_DATA])
-def test_basic_rag_top5_accuracy(item):
+def test_basic_rag_top5_accuracy(item: dict[str, Any]) -> None:
   hits = basic_rag(item["query"], k=5)
   chapters = [h["chapter"] for h in hits]
 
@@ -81,7 +82,7 @@ def test_basic_rag_top5_accuracy(item):
 
 
 @pytest.mark.parametrize("item", ACCURATE_DATA, ids=[_id(g) for g in ACCURATE_DATA])
-def test_hyde_top5_accuracy(item):
+def test_hyde_top5_accuracy(item: dict[str, Any]) -> None:
   result = hyde(item["query"], k=5)
   chapters = [h["chapter"] for h in result["hits"]]
 
@@ -91,7 +92,7 @@ def test_hyde_top5_accuracy(item):
 
 
 @pytest.mark.parametrize("item", ACCURATE_DATA, ids=[_id(g) for g in ACCURATE_DATA])
-def test_hyde_beats_basic_rag_best_distance(item):
+def test_hyde_beats_basic_rag_best_distance(item: dict[str, Any]) -> None:
   basic_hits = basic_rag(item["query"], k=5)
   hyde_result = hyde(item["query"], k=5)
 
