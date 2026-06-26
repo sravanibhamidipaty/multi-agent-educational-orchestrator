@@ -2,8 +2,8 @@ import pdfplumber
 import os
 from config import PDF_DIR, TEXT_DIR
 
-pdf_directory = PDF_DIR
-txt_directory = TEXT_DIR
+pdf_directory: str | None = PDF_DIR
+txt_directory: str | None = TEXT_DIR
 
 os.makedirs(txt_directory, exist_ok=True)
 
