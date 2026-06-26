@@ -1,5 +1,6 @@
 import re
 import chromadb
+from chromadb import GetResult
 from config import CHROMA_PATH
 
 chroma_path: str | None = CHROMA_PATH
@@ -9,7 +10,7 @@ collection: chromadb.Collection = client.get_collection("network_science")
 
 print(f"Total chunks: {collection.count()}")
 
-sample = collection.peek(5)
+sample: GetResult = collection.peek(5)
 
 for i, (doc, meta) in enumerate(zip(sample["documents"], sample["metadatas"])):
   clean = re.sub(r'[-]', '', doc)
