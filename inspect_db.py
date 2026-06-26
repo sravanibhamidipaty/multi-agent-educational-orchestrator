@@ -2,7 +2,7 @@ import re
 import chromadb
 from config import CHROMA_PATH
 
-chroma_path = CHROMA_PATH
+chroma_path: str | None = CHROMA_PATH
 
 client = chromadb.PersistentClient(path=chroma_path)
 collection = client.get_collection("network_science")

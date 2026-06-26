@@ -5,8 +5,8 @@ from sentence_transformers import SentenceTransformer
 import chromadb
 from config import TEXT_DIR, CHROMA_PATH
 
-text_directory = TEXT_DIR
-chromadb_path = CHROMA_PATH
+text_directory: str | None = TEXT_DIR
+chromadb_path: str | None = CHROMA_PATH
 
 def clean_text(text: str) -> str:
     text = re.sub(r"\d+/\d+/\d+,\s+\d+:\d+\s+[AP]M\s+Chapter.+\n", "", text)

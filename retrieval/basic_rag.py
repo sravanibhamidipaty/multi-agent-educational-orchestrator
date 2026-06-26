@@ -2,7 +2,7 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 from config import CHROMA_PATH
 
-chroma_path = CHROMA_PATH
+chroma_path: str | None = CHROMA_PATH
 
 model = SentenceTransformer("BAAI/bge-small-en-v1.5")
 client = chromadb.PersistentClient(path=chroma_path)

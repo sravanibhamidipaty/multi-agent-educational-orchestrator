@@ -3,7 +3,7 @@ from sentence_transformers import SentenceTransformer
 import chromadb
 from config import GROQ_API_KEY, CHROMA_PATH
 
-chroma_path = CHROMA_PATH
+chroma_path: str | None = CHROMA_PATH
 
 groq_client = Groq(api_key=GROQ_API_KEY)
 model = SentenceTransformer("BAAI/bge-small-en-v1.5")
