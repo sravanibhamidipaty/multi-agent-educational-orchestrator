@@ -1,0 +1,37 @@
+flowchart TB
+    subgraph INGEST["Ingestion (offline, one-time)"]
+        direction TB
+        PDF["Barabási textbook<br/>chapter PDFs"]
+        P2T["pdt_to_text.py<br/>PDF → plain text"]
+        TXT["data/text/chapter_00–11.txt"]
+        CHUNK["chunk.py<br/>RecursiveCharacterTextSplitter<br/>(overlap chunking)"]
+        EMB1["Embed chunks<br/>bge-small-en-v1.5"]
+        DB[("ChromaDB<br/>collection: network_science<br/>data/chromadb")]
+        PDF --> P2T --> TXT --> CHUNK --> EMB1 --> DB
+    end
+
+    subgraph LIVE["Live Retrieval Demo (Gradio)"]
+        direction TB
+        Q["Student question"]
+        UI["app.py<br/>gr.ChatInterface"]
+        RET["retriever.py :: retrieve(k=3)"]
+        BASIC["basic_rag.py<br/>embed query → Chroma query"]
+        HITS["Top-k hits<br/>text · chapter · chunk_index · score"]
+        ANS["Answer + cited Sources<br/>(chapter, chunk, relevance score)"]
+        Q --> UI --> RET --> BASIC
+        BASIC -->|semantic search| DB
+        DB --> HITS --> ANS --> UI
+    end
+
+    subgraph EVAL["Evaluation → retriever choice"]
+        direction TB
+        GOLD["ACCURATE_DATA<br/>58 questions → relevant chapter"]
+        HARNESS["metrics.py<br/>Top-1/3/5 · Recall@5 · nDCG@1"]
+        CMP{"HyDE vs Plain RAG"}
+        WIN["Plain RAG wins<br/>0.98 vs 0.93 top-5<br/>(no LLM call, deterministic)"]
+        GOLD --> HARNESS --> CMP --> WIN
+        WIN -.selected retriever.-> BASIC
+    end
+
+    DB -.shared index .-> BASIC
+```

@@ -1,8 +1,8 @@
-from retrieval.hyde_rag import hyde
+from retrieval.basic_rag import basic_rag
 
 
 def retrieve(query: str, k: int = 5) -> list[dict[str, object]]:
-    result = hyde(query)
+    hits = basic_rag(query, k=k)
 
     return [
         {
@@ -11,7 +11,7 @@ def retrieve(query: str, k: int = 5) -> list[dict[str, object]]:
             "chunk_index": hit["chunk_index"],
             "score": round(1 - hit["distance"], 4),
         }
-        for hit in result["hits"]
+        for hit in hits
     ]
 
 
