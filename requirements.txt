@@ -6,3 +6,4 @@ gradio
 pypdf
 python-dotenv
 pytest
+langgraph
