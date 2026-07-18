@@ -2,6 +2,7 @@ import re
 from collections.abc import Callable
 from groq import Groq
 from config import GROQ_API_KEY
+from cache.redis_cache import cached_json
 
 client: Groq = Groq(api_key=GROQ_API_KEY)
 N_SAMPLES: int = 4
@@ -53,7 +54,12 @@ def split_sentences(text: str) -> list[str]:
     return [s.strip() for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s.strip()]
 
 
-def generate_samples(question: str, sampler: SamplerCall, n: int = N_SAMPLES) -> list[str]:
+def generate_samples(question: str, sampler: SamplerCall, n: int = N_SAMPLES, use_cache: bool = False) -> list[str]:
+    if use_cache:
+        return cached_json(
+            "selfcheck", 604800, lambda: [sampler(question, 1.0) for _ in range(n)],
+            question, n
+        )
     return [sampler(question, 1.0) for _ in range(n)]
 
 
@@ -76,8 +82,9 @@ def selfcheck(
     n: int = N_SAMPLES,
     sampler: SamplerCall = _default_sampler,
     checker: CheckerCall = _default_checker,
+    use_cache: bool = False
 ) -> dict[str, object]:
-    samples = generate_samples(question, sampler, n)
+    samples = generate_samples(question, sampler, n, use_cache=use_cache)
     per_sentence = [
         {"sentence": s, "score": round(sentence_score(s, samples, checker), 4)}
         for s in split_sentences(answer)

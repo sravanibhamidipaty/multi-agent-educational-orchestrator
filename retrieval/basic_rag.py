@@ -1,6 +1,7 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
 from config import CHROMA_PATH
+from cache.redis_cache import cached_json
 
 chroma_path: str | None = CHROMA_PATH
 
@@ -9,7 +10,7 @@ client: chromadb.ClientAPI = chromadb.PersistentClient(path=chroma_path)
 collection: chromadb.Collection = client.get_collection("network_science")
 
 
-def basic_rag(query: str, k: int = 5) -> list[dict[str, object]]:
+def _basic_rag_uncached(query: str, k: int = 5) -> list[dict[str, object]]:
     embedding = model.encode(query).tolist()
 
     results = collection.query(
@@ -31,6 +32,8 @@ def basic_rag(query: str, k: int = 5) -> list[dict[str, object]]:
         )
     ]
 
+def basic_rag(query: str, k: int=5) -> list[dict[str, object]]:
+    return cached_json("rag", 86400, lambda: _basic_rag_uncached(query, k), query, k)
 
 if __name__ == "__main__":
     test_queries = [

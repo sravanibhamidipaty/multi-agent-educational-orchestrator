@@ -1,5 +1,6 @@
 from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
+from observability.log import log_turn
 
 from agents.hint_agent import (
     transform_retrieve,
@@ -13,7 +14,7 @@ from agents.hint_agent import (
 from agents.verification_agent import selfcheck
 from agents.faithfulness import source_faithfulness
 
-HALLUCINATION_THRESHOLD: float = 0.5  # SelfCheckGPT: reject hints scoring above this because that is a lot more hallucination than factual content
+HALLUCINATION_THRESHOLD: float = 0.69  # SelfCheckGPT: reject hints scoring above this because that is a lot more hallucination than factual content
 MAX_STUCK_CYCLES: int = (
     2  # decompositions at the floor before offering a human support advice
 )
@@ -21,6 +22,8 @@ MAX_STUCK_CYCLES: int = (
 
 class TutorState(TypedDict, total=False):
     # Inputs sent per turn (from ChromaDB student-progres memory)
+    conversation_id: str
+    turn: int
     question: str
     level: int
     prior_hints: list[str]
@@ -72,6 +75,32 @@ def verification_node(state: TutorState) -> TutorState:
 
     approved = verification["hallucination_score"] <= HALLUCINATION_THRESHOLD
 
+    log_turn(
+        event="verification",
+        conversation_id=state.get("conversation_id"),
+        turn=state.get("turn"),
+        question=_active_question(state),
+        hint_level=state.get("level", 1),
+        approved=approved,
+        threshold=HALLUCINATION_THRESHOLD,
+        decision_reason=(
+            "approved"
+            if approved
+            else f"hallucination_score {verification['hallucination_score']:.2f} > {HALLUCINATION_THRESHOLD}"
+        ),
+        hallucination_score=verification["hallucination_score"],
+        faithfulness_score=faithfulness["faithfulness_score"],
+        sentence_scores=verification["sentence_scores"],
+        n_samples=verification["n_samples"],
+        faithfulness_checks=[
+            {"sentence": c["sentence"], "faithful": c["faithful"],
+             "source": c["source"], "reason": c["reason"]}
+            for c in faithfulness["checks"]
+        ],
+        unfaithful_count=len(faithfulness["unfaithful"]),
+        escalate_to_human=state.get("escalate_to_human", False),
+    )
+
     return {
         "verification": verification,
         "faithfulness": faithfulness,
@@ -93,6 +122,17 @@ def stuck_node(state: TutorState) -> TutorState:
     cycles = state.get("stuck_cycles", 0) + 1
     if cycles > MAX_STUCK_CYCLES:
         # Post in Ed Discussion. Human in the loop is needed
+        log_turn(
+            event="stuck_escalate",
+            conversation_id=state.get("conversation_id"),
+            turn=state.get("turn"),
+            question=state["question"],
+            hint_level=state.get("level", 1),
+            approved=True,
+            escalate_to_human=True,
+            stuck_cycles=cycles,
+            decision_reason="floor reached; escalating to human",
+        )
         return {
             "approved": True,
             "escalate_to_human": True,
@@ -106,6 +146,18 @@ def stuck_node(state: TutorState) -> TutorState:
     # HINTS "student features cycles": decompose to a subquestion
     subquestion = decompose(
         state["question"], state["context"], prior_hints=state.get("prior_hints", [])
+    )
+    log_turn(
+        event="stuck_decompose",
+        conversation_id=state.get("conversation_id"),
+        turn=state.get("turn"),
+        question=state["question"],
+        hint_level=state.get("level", 1),
+        approved=True,
+        escalate_to_human=False,
+        stuck_cycles=cycles,
+        subquestion=subquestion,
+        decision_reason="floor reached; decomposing to sub-question",
     )
     return {
         "approved": True,
@@ -145,9 +197,14 @@ def build_pipeline():
 pipeline = build_pipeline()
 
 if __name__ == "__main__":
+    from observability.log import new_conversation_id
+
     # Turn 1: initial question, Level 1. level and prior_hints come from memory in production
+    cid = new_conversation_id()
     state = pipeline.invoke(
         {
+            "conversation_id": cid,
+            "turn": 1,
             "question": "How does the scale-free network form?",
             "level": 1,
             "prior_hints": [],

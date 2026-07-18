@@ -1,0 +1,130 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 0,
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "10s",
+  "title": "Tutor Observability",
+  "uid": "tutor-observability",
+  "schemaVersion": 39,
+  "tags": ["tutor", "milestone2"],
+  "templating": {
+    "list": [
+      {
+        "name": "conversation_id",
+        "type": "textbox",
+        "label": "conversation_id",
+        "query": "",
+        "current": { "text": "", "value": "" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Conversation Trace",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
+      "options": { "showTime": true, "sortOrder": "Ascending", "wrapLogMessage": true, "prettifyLogMessage": true },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"tutor\"} | json | event=~\"verification|stuck_decompose|stuck_escalate\"",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Verification Reasoning (faithfulness)",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
+      "options": { "showTime": true, "sortOrder": "Ascending", "wrapLogMessage": true },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{job=\"tutor\"} | json first_reason=\"faithfulness_checks[0].reason\", hl=\"hint_level\", appr=\"approved\", hs=\"hallucination_score\" | event=\"verification\" | line_format \"level={{.hl}} approved={{.appr}} hallu={{.hs}} :: {{.first_reason}}\"",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Approved vs Rejected",
+      "type": "timeseries",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 9 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 60, "lineWidth": 1 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "approved",
+          "legendFormat": "approved",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({job=\"tutor\"} | json | event=\"verification\" | approved=\"true\" [$__auto]))",
+          "queryType": "range"
+        },
+        {
+          "refId": "rejected",
+          "legendFormat": "rejected",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({job=\"tutor\"} | json | event=\"verification\" | approved=\"false\" [$__auto]))",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Avg Hallucination Score",
+      "type": "timeseries",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 9 },
+      "fieldConfig": { "defaults": { "min": 0, "max": 1, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "pointSize": 6 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "avg hallucination",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg(avg_over_time({job=\"tutor\"} | json | event=\"verification\" | unwrap hallucination_score [$__auto]))",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Escalations to Ed Discussion",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 9 },
+      "options": { "colorMode": "value", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({job=\"tutor\"} | json | event=\"stuck_escalate\" [$__auto]))",
+          "queryType": "range"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Verifications by Hint Level",
+      "type": "timeseries",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 17 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "bars", "fillOpacity": 70, "lineWidth": 1, "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "hint_level {{hint_level}}",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by (hint_level) (count_over_time({job=\"tutor\"} | json | event=\"verification\" [$__auto]))",
+          "queryType": "range"
+        }
+      ]
+    }
+  ]
+}
