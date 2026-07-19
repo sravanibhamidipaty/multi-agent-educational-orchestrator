@@ -14,9 +14,10 @@ from agents.hint_agent import (
 from agents.verification_agent import selfcheck
 from agents.faithfulness import source_faithfulness
 
-HALLUCINATION_THRESHOLD: float = 0.69  # SelfCheckGPT: reject hints scoring above this because that is a lot more hallucination than factual content
+FAITHFULNESS_GATE: float = 0.5  # GATE: approve a hint when at least half its sentences are grounded in the retrieved passages (deterministic, temp=0)
+HALLUCINATION_THRESHOLD: float = 0.69  # SelfCheckGPT: monitored + logged only, NOT a gate (noisy on intentionally-vague nudges, non-deterministic at temp=1.0)
 MAX_STUCK_CYCLES: int = (
-    2  # decompositions at the floor before offering a human support advice
+    1 # decompositions at the floor before offering a human support.
 )
 
 
@@ -68,12 +69,15 @@ def hint_node(state: TutorState) -> TutorState:
 
 # Agent 3: Verification Agent
 def verification_node(state: TutorState) -> TutorState:
-    # Check 1: SelfCheckGPT (N=4) -- hallucination via sample divergence
-    verification = selfcheck(_active_question(state), state["hint"])
+    level = state.get("level", 1)
+    # Check 1: SelfCheckGPT (N=4) -- hallucination via sample divergence.
+    verification = selfcheck(_active_question(state), state["hint"], use_cache=True)
     # Check 2: source-faithfulness -- grounded in retrieved passages, with source + reason logs.
     faithfulness = source_faithfulness(state["hint"], state["context"])
 
-    approved = verification["hallucination_score"] <= HALLUCINATION_THRESHOLD
+    faithful_ok = faithfulness["faithfulness_score"] >= FAITHFULNESS_GATE
+    hallucination_ok = verification["hallucination_score"] <= HALLUCINATION_THRESHOLD
+    approved = faithful_ok if level == 1 else hallucination_ok
 
     log_turn(
         event="verification",
@@ -82,10 +86,12 @@ def verification_node(state: TutorState) -> TutorState:
         question=_active_question(state),
         hint_level=state.get("level", 1),
         approved=approved,
-        threshold=HALLUCINATION_THRESHOLD,
+        threshold=FAITHFULNESS_GATE if level == 1 else HALLUCINATION_THRESHOLD,
         decision_reason=(
             "approved"
             if approved
+            else f"faithfulness_score {faithfulness['faithfulness_score']:.2f} < {FAITHFULNESS_GATE}"
+            if level == 1
             else f"hallucination_score {verification['hallucination_score']:.2f} > {HALLUCINATION_THRESHOLD}"
         ),
         hallucination_score=verification["hallucination_score"],
@@ -110,9 +116,13 @@ def verification_node(state: TutorState) -> TutorState:
         else "I am not confident enough to hint safely on that yet — try rephrasing your question.",
         "next_level": next_level(state.get("level", 1)),
         "notes": [
-            f"level={state.get('level', 1)}",
-            f"hallucination={verification['hallucination_score']:.2f} (<= {HALLUCINATION_THRESHOLD}, GATE)",
-            f"faithfulness={faithfulness['faithfulness_score']:.2f} (logged, not a gate)",
+            f"level={level}",
+            (f"faithfulness={faithfulness['faithfulness_score']:.2f} (>= {FAITHFULNESS_GATE}, GATE @L1)"
+             if level == 1
+             else f"hallucination={verification['hallucination_score']:.2f} (<= {HALLUCINATION_THRESHOLD}, GATE @L{level})"),
+            (f"hallucination={verification['hallucination_score']:.2f} (logged)"
+             if level == 1
+             else f"faithfulness={faithfulness['faithfulness_score']:.2f} (logged)"),
             "sources: " + ", ".join(c["source"] for c in faithfulness["checks"])],
     }
 

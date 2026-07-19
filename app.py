@@ -4,20 +4,49 @@ from agents.orchestrator import pipeline, MAX_LEVEL
 from observability.log import new_conversation_id
 from typing import Any
 
+
+CONTINUE_CUES: set[str] = {
+    "meaning", "more", "next", "go on", "continue", "hint",
+    "another", "again", "and", "so", "ok", "okay", "?",
+}
+
+
+def _is_continue(message: str) -> bool:
+    m = message.strip().lower().rstrip("?.! ")
+    return not m or m in CONTINUE_CUES
+
+
+ESCALATION_MESSAGE: str = (
+    "This question has been escalated — please post it on Ed Discussion and a TA "
+    "will take a look. This conversation is closed."
+)
+
+
 def chat(message: str, history: list[dict[str, str]], session: dict[str, Any]):
+    if session.get("closed"):
+        return ESCALATION_MESSAGE
+
     if not session:
         session.update(
             {
                 "conversation_id": new_conversation_id(),
-                "turn": 0,
+                "turn": 1,
                 "level": 1,
                 "prior_hints": [],
                 "stuck_cycles": 0,
                 "question": message
             }
         )
-
-    session["turn"] += 1
+    elif not _is_continue(message):
+        session.update(
+            {
+                "question": message,
+                "turn": session["turn"] + 1,
+                "level": 1,
+                "prior_hints": [],
+                "stuck_cycles": 0,
+            }
+        )
 
     state = pipeline.invoke({
         "conversation_id": session["conversation_id"],
@@ -34,11 +63,13 @@ def chat(message: str, history: list[dict[str, str]], session: dict[str, Any]):
     turn_no = session["turn"]
 
     if state.get("escalate_to_human"):
-        session.clear()
+        session["closed"] = True
     elif state.get("subquestion"):
         session["stuck_cycles"] = state.get("stuck_cycles", session["stuck_cycles"])
         session["question"] = state["subquestion"]
-        session["level"] = MAX_LEVEL + 1
+        session["turn"] += 1
+        session["level"] = 1
+        session["prior_hints"] = []
     else:
         if state.get("final_hint"):
             session["prior_hints"].append(state["final_hint"])

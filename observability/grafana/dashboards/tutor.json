@@ -31,7 +31,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{job=\"tutor\"} | json | event=~\"verification|stuck_decompose|stuck_escalate\"",
+          "expr": "{job=\"tutor\"} | json | event=~\"verification|stuck_decompose|stuck_escalate\" | conversation_id=~\"(?i).*${conversation_id}.*\"",
           "queryType": "range"
         }
       ]
@@ -47,7 +47,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "{job=\"tutor\"} | json first_reason=\"faithfulness_checks[0].reason\", hl=\"hint_level\", appr=\"approved\", hs=\"hallucination_score\" | event=\"verification\" | line_format \"level={{.hl}} approved={{.appr}} hallu={{.hs}} :: {{.first_reason}}\"",
+          "expr": "{job=\"tutor\"} | json first_reason=\"faithfulness_checks[0].reason\", hl=\"hint_level\", appr=\"approved\", hs=\"hallucination_score\", cid=\"conversation_id\" | event=\"verification\" | cid=~\"(?i).*${conversation_id}.*\" | line_format \"level={{.hl}} approved={{.appr}} hallu={{.hs}} :: {{.first_reason}}\"",
           "queryType": "range"
         }
       ]
@@ -64,14 +64,14 @@
           "refId": "approved",
           "legendFormat": "approved",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum(count_over_time({job=\"tutor\"} | json | event=\"verification\" | approved=\"true\" [$__auto]))",
+          "expr": "sum(count_over_time({job=\"tutor\"} | json | event=\"verification\" | approved=\"true\" | conversation_id=~\"(?i).*${conversation_id}.*\" [$__auto]))",
           "queryType": "range"
         },
         {
           "refId": "rejected",
           "legendFormat": "rejected",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum(count_over_time({job=\"tutor\"} | json | event=\"verification\" | approved=\"false\" [$__auto]))",
+          "expr": "sum(count_over_time({job=\"tutor\"} | json | event=\"verification\" | approved=\"false\" | conversation_id=~\"(?i).*${conversation_id}.*\" [$__auto]))",
           "queryType": "range"
         }
       ]
@@ -88,7 +88,7 @@
           "refId": "A",
           "legendFormat": "avg hallucination",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "avg(avg_over_time({job=\"tutor\"} | json | event=\"verification\" | unwrap hallucination_score [$__auto]))",
+          "expr": "avg(avg_over_time({job=\"tutor\"} | json | event=\"verification\" | conversation_id=~\"(?i).*${conversation_id}.*\" | unwrap hallucination_score [$__auto]))",
           "queryType": "range"
         }
       ]
@@ -104,7 +104,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum(count_over_time({job=\"tutor\"} | json | event=\"stuck_escalate\" [$__auto]))",
+          "expr": "sum(count_over_time({job=\"tutor\"} | json | event=\"stuck_escalate\" | conversation_id=~\"(?i).*${conversation_id}.*\" [$__auto]))",
           "queryType": "range"
         }
       ]
@@ -121,7 +121,7 @@
           "refId": "A",
           "legendFormat": "hint_level {{hint_level}}",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum by (hint_level) (count_over_time({job=\"tutor\"} | json | event=\"verification\" [$__auto]))",
+          "expr": "sum by (hint_level) (count_over_time({job=\"tutor\"} | json | event=\"verification\" | conversation_id=~\"(?i).*${conversation_id}.*\" [$__auto]))",
           "queryType": "range"
         }
       ]

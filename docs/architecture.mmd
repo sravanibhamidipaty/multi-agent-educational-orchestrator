@@ -10,17 +10,15 @@ flowchart TB
         PDF --> P2T --> TXT --> CHUNK --> EMB1 --> DB
     end
 
-    subgraph LIVE["Live Retrieval Demo (Gradio)"]
+    subgraph LIVE["Live Tutor UI (Gradio)"]
         direction TB
         Q["Student question"]
         UI["app.py<br/>gr.ChatInterface"]
-        RET["retriever.py :: retrieve(k=3)"]
-        BASIC["basic_rag.py<br/>embed query → Chroma query"]
-        HITS["Top-k hits<br/>text · chapter · chunk_index · score"]
-        ANS["Answer + cited Sources<br/>(chapter, chunk, relevance score)"]
-        Q --> UI --> RET --> BASIC
-        BASIC -->|semantic search| DB
-        DB --> HITS --> ANS --> UI
+        SESS["Session state<br/>conversation_id · turn · level ·<br/>prior_hints · stuck_cycles"]
+        INVOKE["pipeline.invoke(state)<br/>→ LangGraph tutor pipeline"]
+        OUT["final_hint + notes<br/>(cid · turn · decision reason)"]
+        Q --> UI --> SESS --> INVOKE
+        INVOKE --> OUT --> UI
     end
 
     subgraph EVAL["Evaluation → retriever choice"]
@@ -33,5 +31,39 @@ flowchart TB
         WIN -.selected retriever.-> BASIC
     end
 
+    subgraph TUTOR["Live Tutor Pipeline (agents/orchestrator.py :: LangGraph StateGraph)"]
+        direction TB
+        STU["Student turn<br/>question · level · prior_hints"]
+        RETA["Retrieval Agent<br/>transform_retrieve(k=5) query transformation<br/>→ narrow_down(min_relevance=0.15, top_n=3)"]
+        RED[("Redis cache<br/>cache/redis_cache.py<br/>cached_json, TTL")]
+        ROUTE{"_route<br/>level > MAX_LEVEL (3)?"}
+        HINTA["Hint Agent<br/>render_hint — ladder L1 nudge →<br/>L2 context → L3 scaffold<br/>(never the answer)"]
+        VERA["Verification Agent<br/>SelfCheckGPT selfcheck(N=4, cached)<br/>+ source_faithfulness (temp=0)"]
+        GATE{"L1: faithfulness ≥ 0.5<br/>L2/L3: hallucination ≤ 0.69"}
+        OK["final_hint shown<br/>+ cited sources · next_level"]
+        SAFE["Safe refusal<br/>'not confident enough to hint'"]
+        STUCK["Stuck Node<br/>ladder exhausted (level > MAX_LEVEL=3)<br/>decompose → prerequisite sub-question,<br/>restart 3-hint ladder at L1"]
+        HUMAN["Escalate to human<br/>after MAX_STUCK_CYCLES (1) sub-question cycle<br/>post to Ed Discussion / TA<br/>(conversation locked — no further answers)"]
+        LOG[["observability/log.py<br/>log_turn — per-turn decisions"]]
+
+        STU --> RETA
+        RETA -->|semantic search| DB
+        RETA <-.samples / passages.-> RED
+        RETA --> ROUTE
+        ROUTE -->|hint| HINTA --> VERA --> GATE
+        ROUTE -->|stuck| STUCK
+        VERA <-.selfcheck samples.-> RED
+        GATE -->|approved| OK
+        GATE -->|rejected| SAFE
+        STUCK -.->|new sub-question, restart ladder<br/>cross-turn via app.py session| RETA
+        STUCK -->|after 1 cycle| HUMAN
+        VERA -.-> LOG
+        STUCK -.-> LOG
+    end
+
+    BASIC["Selected retriever<br/>retrieval/retriever.py :: retrieve(k=5)<br/>→ basic_rag.py (embed query → Chroma query)"]
+
+    INVOKE ==>|invokes| STU
+    RETA -.transform_retrieve → retrieve.-> BASIC
+    BASIC -->|semantic search| DB
     DB -.shared index .-> BASIC
-```
