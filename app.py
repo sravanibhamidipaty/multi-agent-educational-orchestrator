@@ -1,19 +1,9 @@
 import gradio as gr
 
 from agents.orchestrator import pipeline, MAX_LEVEL
-from observability.log import new_conversation_id
+from agents.intent import is_continuation as _is_continue
+from observability.log import new_conversation_id, log_turn
 from typing import Any
-
-
-CONTINUE_CUES: set[str] = {
-    "meaning", "more", "next", "go on", "continue", "hint",
-    "another", "again", "and", "so", "ok", "okay", "?",
-}
-
-
-def _is_continue(message: str) -> bool:
-    m = message.strip().lower().rstrip("?.! ")
-    return not m or m in CONTINUE_CUES
 
 
 ESCALATION_MESSAGE: str = (
@@ -79,10 +69,21 @@ def chat(message: str, history: list[dict[str, str]], session: dict[str, Any]):
     return f"{state.get('final_hint','')}\n\n_(cid={cid[:8]} · turn {turn_no} · {reason})_"
 
 
+def record_feedback(data: gr.LikeData, session: dict[str, Any]) -> None:
+    log_turn(
+        event="feedback",
+        conversation_id=session.get("conversation_id", "unknown"),
+        turn=session.get("turn"),
+        liked=data.liked,
+        message_index=data.index,
+        hint=data.value,
+    )
+
+
 with gr.Blocks(title="Multi Agent Educational Orchestrator") as demo:
     gr.Markdown("## Multi Agent Educational Orchestrator")
     session = gr.State({})
-    gr.ChatInterface(
+    chat_ui = gr.ChatInterface(
         fn=lambda m, h, s : chat(m, h, s),
         additional_inputs=[session],
         description="Ask questions about CS 7280: Network Science grounded in Barabási's textbook.",
@@ -93,6 +94,7 @@ with gr.Blocks(title="Multi Agent Educational Orchestrator") as demo:
             ["What makes a network robust?"],
         ]
     )
+    chat_ui.chatbot.like(record_feedback, inputs=[session])
 
 if __name__ == "__main__":
     demo.launch()
